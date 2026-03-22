@@ -1,0 +1,3 @@
+[submodule "src/obsidian-advanced-canvas"]
+	path = modules/obsidian-advanced-canvas
+	url = https://github.com/Developer-Mike/obsidian-advanced-canvas.git
