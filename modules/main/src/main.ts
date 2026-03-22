@@ -1,6 +1,7 @@
 import {App, Editor, ItemView, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
 import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
 import {Canvas, CanvasView} from "@submodule/advanced-canvas/@types/Canvas";
+import {repositionSelectedElements} from "@/featrues/circular-reposition";
 
 // Remember to rename these classes and interfaces!
 
@@ -12,6 +13,12 @@ export default class MyPlugin extends Plugin {
 			.getLeavesOfType('canvas')
 			.map(leaf => (leaf.view as CanvasView)?.canvas)
 			.filter(Boolean);
+	}
+
+	getCurrentCanvasView(): CanvasView | null {
+		const canvasView = this.app.workspace.getActiveViewOfType(ItemView)
+		if (canvasView?.getViewType() !== 'canvas') return null
+		return canvasView as CanvasView
 	}
 
 	async onload() {
@@ -26,6 +33,19 @@ export default class MyPlugin extends Plugin {
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
 		statusBarItemEl.setText('Status bar text');
+
+		this.addCommand({
+			id: 'circularize-canvas-nodes',
+			name: 'Form a node circle',
+			callback: () => {
+				const currentView = this.getCurrentCanvasView();
+				if (!currentView) {
+					new Notice("No canvas view found");
+					return
+				}
+				repositionSelectedElements(currentView.canvas);
+			}
+		})
 
 		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
@@ -64,16 +84,6 @@ export default class MyPlugin extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-
 	}
 
 	onunload() {
