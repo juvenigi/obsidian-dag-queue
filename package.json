@@ -1,0 +1,8 @@
+{
+	"main": "main.js",
+	"workspaces": [
+		"modules/main",
+		"modules/obsidian-advanced-canvas",
+		"modules/plugin-build-utils"
+	]
+}

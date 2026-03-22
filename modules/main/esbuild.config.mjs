@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from 'node:module';
+import copy from "esbuild-plugin-copy";
 
 const banner =
 `/*
@@ -16,8 +17,10 @@ const context = await esbuild.context({
 		js: banner,
 	},
 	entryPoints: ["src/main.ts"],
+	tsconfig: "./tsconfig.json",
 	bundle: true,
 	external: [
+		"@submodule/advanced-canvas",
 		"obsidian",
 		"electron",
 		"@codemirror/autocomplete",
@@ -37,7 +40,8 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: "../../main.js",
+
 	minify: prod,
 });
 

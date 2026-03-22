@@ -1,10 +1,18 @@
 import {App, Editor, ItemView, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
 import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import {Canvas, CanvasView} from "@submodule/advanced-canvas/@types/Canvas";
 
 // Remember to rename these classes and interfaces!
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
+
+	getCanvases(): Canvas[] {
+		return this.app.workspace
+			.getLeavesOfType('canvas')
+			.map(leaf => (leaf.view as CanvasView)?.canvas)
+			.filter(Boolean);
+	}
 
 	async onload() {
 		await this.loadSettings();

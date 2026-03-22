@@ -16,12 +16,12 @@ export default tseslint.config(
 						'manifest.json'
 					]
 				},
-				tsconfigRootDir: import.meta.dirname,
+				tsconfigRootDir: (import.meta as any)['dirname'],
 				extraFileExtensions: ['.json']
 			},
 		},
 	},
-	...obsidianmd.configs.recommended,
+	...(obsidianmd.configs?.recommended as Iterable<any> ?? []),
 	globalIgnores([
 		"node_modules",
 		"dist",
