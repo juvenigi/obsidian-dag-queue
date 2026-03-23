@@ -1,7 +1,6 @@
-
-// note: obsidian canvas's y axis increases top-to-bottom, x axis left-to-right.
 import {CanvasNodeData} from "obsidian-advanced-canvas/assets/formats/advanced-json-canvas/spec/1.0-1.0";
 
+// note: obsidian canvas's y axis increases top-to-bottom, x axis left-to-right.
 export type BBox2D = {
 	topLeft: { x: number; y: number };
 	bottomRight: { x: number; y: number };
