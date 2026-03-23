@@ -1,43 +1,33 @@
-import AdvancedCanvasPlugin from "@submodule/advanced-canvas/main";
-import {
-	AdvancedCanvasPluginSettingsValues,
-	AdvancedCanvasPluginSettingTab,
-	DEFAULT_SETTINGS_VALUES
-} from "@submodule/advanced-canvas/settings";
+import {MyPluginSettings} from "@/settings";
+import MyPlugin from "@/main";
+import {DEFAULT_SETTINGS} from "@/settings/defaults";
+import {MySettingTab} from "@/settings/settings-tab";
 
-// todo: rewire
 export default class SettingsController {
-	private readonly plugin: AdvancedCanvasPlugin
-	private settings: AdvancedCanvasPluginSettingsValues
-	private settingsTab: AdvancedCanvasPluginSettingTab
 
+	private _settings: MyPluginSettings;
 
-	constructor(plugin: AdvancedCanvasPlugin) {
-		this.plugin = plugin
+	constructor(
+		private plugin: MyPlugin,
+		onDiskData: Partial<MyPluginSettings>
+	) {
+		this.settings = onDiskData;
+		this.drawSettingsTab();
 	}
 
-	async loadSettings() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		this.settings = Object.assign({}, DEFAULT_SETTINGS_VALUES, await this.plugin.loadData())
-		this.plugin.app.workspace.trigger("advanced-canvas:settings-changed")
+	set settings(data: Partial<MyPluginSettings>) {
+		this._settings = Object.assign({}, DEFAULT_SETTINGS, data);
+	}
+
+	get settings(): MyPluginSettings {
+		return this._settings;
 	}
 
 	async saveSettings() {
-		await this.plugin.saveData(this.settings)
+		await this.plugin.saveData(this.plugin.settings);
 	}
 
-	getSetting<T extends keyof AdvancedCanvasPluginSettingsValues>(key: T): AdvancedCanvasPluginSettingsValues[T] {
-		return this.settings[key]
-	}
-
-	async setSetting(data: Partial<AdvancedCanvasPluginSettingsValues>) {
-		this.settings = Object.assign(this.settings, data)
-		await this.saveSettings()
-		this.plugin.app.workspace.trigger("advanced-canvas:settings-changed")
-	}
-
-	addSettingsTab() {
-		this.settingsTab = new AdvancedCanvasPluginSettingTab(this.plugin, this)
-		this.plugin.addSettingTab(this.settingsTab)
+	private drawSettingsTab() {
+		this.plugin.addSettingTab(new MySettingTab(this.plugin, this));
 	}
 }

@@ -7,14 +7,14 @@ import {
 } from "@submodule/advanced-canvas/@types/Settings";
 import {Notice, Setting as SettingEl, TextComponent} from "obsidian";
 import {AdvancedCanvasPluginSettingsValues} from "@submodule/advanced-canvas/settings";
-import SettingsController from "@/settings/settings-controller";
+import SettingsControllerWip from "@/settings/settings-controller-wip";
 
 const README_URL = "";
 
 export default class SettingElHelper {
 
 	constructor(
-		private settingsManager: SettingsController
+		private settingsManager: SettingsControllerWip
 	) {
 	}
 
