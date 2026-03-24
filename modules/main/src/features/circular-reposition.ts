@@ -28,6 +28,7 @@ export class CircularRepositionRegistry {
 		plugin.addCommand({
 			id: 'circularize-canvas-nodes-distributed',
 			name: 'Form a node circle (space-distributed)',
+			hotkeys: [{key: 'B', modifiers: ['Alt']}],
 			callback: () => {
 				const view = checkIfCanvas(plugin.app.workspace.getActiveViewOfType(ItemView));
 				if (!view?.canvas) {
@@ -41,39 +42,68 @@ export class CircularRepositionRegistry {
 	}
 }
 
+type NodePositionSnapshot = Pick<CanvasNodeData, "id" | "x" | "y" | "width" | "height">;
+
 const stateSnapshot = {
 	radius: 0,
 	center: {x: 0, y: 0},
-	selectedNodes: [] as CanvasNodeData[]
+	selectedNodes: [] as NodePositionSnapshot[],
+};
+
+function cloneNodeSnapshot(nodes: CanvasNodeData[]): NodePositionSnapshot[] {
+	return nodes.map((node) => ({
+		id: node.id,
+		x: node.x,
+		y: node.y,
+		width: node.width,
+		height: node.height,
+	}));
 }
 
 // returns true if the input data matches snapshot value-wise
-function compareAndSetSnapshot(nodes: CanvasNodeData[]): boolean {
-	const {nodeIdMap} = new NodePatcher(stateSnapshot.selectedNodes as any);
-	const {nodeIdMap: inputNodeIdMap} = new NodePatcher(nodes as any);
-	if (nodeIdMap.size !== inputNodeIdMap.size) {
-		stateSnapshot.selectedNodes = nodes;
+function matchesSnapshot(nodes: CanvasNodeData[]): boolean {
+	if (stateSnapshot.selectedNodes.length === 0 || nodes.length === 0) {
 		return false;
 	}
-	for (const [key, {x: valueX, y: valueY}] of inputNodeIdMap.entries()) {
-		const canvasData = nodeIdMap.get(key);
-		if (!canvasData) {
-			stateSnapshot.selectedNodes = nodes;
-			return false;
-		}
 
-		const {x, y} = canvasData;
+	const snapshotNodeIdMap = new NodePatcher({nodes: stateSnapshot.selectedNodes} as any).nodeIdMap;
+	const inputNodeIdMap = new NodePatcher({nodes} as any).nodeIdMap;
 
-		if (valueX !== x || valueY !== y) {
-			stateSnapshot.selectedNodes = nodes;
-			return false;
-		}
+	if (snapshotNodeIdMap.size !== inputNodeIdMap.size) {
+		return false;
 	}
+	// todo: this is hot garbage
+	//
+	// for (const [key, {x: valueX, y: valueY}] of inputNodeIdMap.entries()) {
+	// 	const snapshotNode = snapshotNodeIdMap.get(key);
+	// 	if (!snapshotNode) {
+	// 		return false;
+	// 	}
+	//
+	// 	const {x, y} = snapshotNode;
+	//
+	// 	if (valueX !== x || valueY !== y) {
+	// 		new Notice("found not equal nodes")
+	// 		return false;
+	// 	}
+	// }
 
 	return true;
 }
 
-const ROTATION_AMOUNT_RADIANS = 1
+// todo: I don't care what functional purists say, I will refuse to make clones until it's necessary.
+// todo: memory should not be free real estate for developers.
+function updateSnapshot(
+	nodes: CanvasNodeData[],
+	center: { x: number; y: number },
+	radius: number,
+): void {
+	stateSnapshot.selectedNodes = cloneNodeSnapshot(nodes);
+	stateSnapshot.center = {...center};
+	stateSnapshot.radius = radius;
+}
+
+const ROTATION_AMOUNT_RADIANS = 0.1;
 
 // properties: order-preserving. The output array index will correspond to node array index
 function rotateByHardCodedRadians(
@@ -105,32 +135,48 @@ function rotateByHardCodedRadians(
 	return res;
 }
 
-
 export function distributedRepositionInACircle(canvas: Canvas) {
 	const selectedNodes = getSelectedNodes(canvas);
 	if (selectedNodes.length === 0) {
-		return
+		return;
 	}
 
 	const patcher = new NodePatcher(canvas.getData() as any);
-	let mappedCoords;
-	if (compareAndSetSnapshot(selectedNodes)) {
-		const {center} = stateSnapshot;
+	let mappedCoords: Array<{ x: number; y: number }>;
+	let center: { x: number; y: number };
+	let radius: number;
+
+	if (matchesSnapshot(selectedNodes)) {
+		new Notice("matches snapshot")
+		center = stateSnapshot.center;
+		radius = stateSnapshot.radius;
 		mappedCoords = rotateByHardCodedRadians(center, selectedNodes);
 	} else {
-		const {center, radius} = getCircleParameters(selectedNodes);
-		stateSnapshot.center = center;
-		stateSnapshot.radius = radius;
+		const circle = getCircleParameters(selectedNodes);
+		center = circle.center;
+		radius = circle.radius;
 		mappedCoords = getEquidistantMappedCoords(center, radius, selectedNodes.length);
 	}
+
 	selectedNodes.forEach((v, idx) => {
 		const node = patcher.nodeIdMap.get(v.id);
-		if (node && mappedCoords[idx]) {
-			node.x = mappedCoords[idx].x;
-			node.y = mappedCoords[idx].y;
+		const mapped = mappedCoords[idx];
+		if (node && mapped) {
+			node.x = mapped.x;
+			node.y = mapped.y;
 		}
 	});
-	stateSnapshot.selectedNodes = selectedNodes;
+
+	updateSnapshot(
+		selectedNodes.map((node, idx) => ({
+			...node,
+			x: node.x,
+			y: node.y,
+			id: node.id
+		})),
+		center,
+		radius,
+	);
 
 	void canvas.setData(patcher.getCanvasData());
 }
