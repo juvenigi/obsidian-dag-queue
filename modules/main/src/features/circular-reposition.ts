@@ -41,23 +41,96 @@ export class CircularRepositionRegistry {
 	}
 }
 
+const stateSnapshot = {
+	radius: 0,
+	center: {x: 0, y: 0},
+	selectedNodes: [] as CanvasNodeData[]
+}
+
+// returns true if the input data matches snapshot value-wise
+function compareAndSetSnapshot(nodes: CanvasNodeData[]): boolean {
+	const {nodeIdMap} = new NodePatcher(stateSnapshot.selectedNodes as any);
+	const {nodeIdMap: inputNodeIdMap} = new NodePatcher(nodes as any);
+	if (nodeIdMap.size !== inputNodeIdMap.size) {
+		stateSnapshot.selectedNodes = nodes;
+		return false;
+	}
+	for (const [key, {x: valueX, y: valueY}] of inputNodeIdMap.entries()) {
+		const canvasData = nodeIdMap.get(key);
+		if (!canvasData) {
+			stateSnapshot.selectedNodes = nodes;
+			return false;
+		}
+
+		const {x, y} = canvasData;
+
+		if (valueX !== x || valueY !== y) {
+			stateSnapshot.selectedNodes = nodes;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+const ROTATION_AMOUNT_RADIANS = 1
+
+// properties: order-preserving. The output array index will correspond to node array index
+function rotateByHardCodedRadians(
+	center: { x: number; y: number },
+	nodes: CanvasNodeData[],
+): Array<{ x: number; y: number }> {
+	const radians = ROTATION_AMOUNT_RADIANS;
+	const cos = Math.cos(radians);
+	const sin = Math.sin(radians);
+
+	const res: Array<{ x: number; y: number }> = [];
+
+	for (const node of nodes) {
+		const nodeCenterX = node.x + node.width / 2;
+		const nodeCenterY = node.y + node.height / 2;
+
+		const dx = nodeCenterX - center.x;
+		const dy = nodeCenterY - center.y;
+
+		const rotatedCenterX = center.x + dx * cos - dy * sin;
+		const rotatedCenterY = center.y + dx * sin + dy * cos;
+
+		res.push({
+			x: rotatedCenterX - node.width / 2,
+			y: rotatedCenterY - node.height / 2,
+		});
+	}
+
+	return res;
+}
+
+
 export function distributedRepositionInACircle(canvas: Canvas) {
 	const selectedNodes = getSelectedNodes(canvas);
 	if (selectedNodes.length === 0) {
 		return
 	}
-	// fixme: typescript gives up here
-	const patcher = new NodePatcher(canvas.getData() as any);
-	const {center, radius} = getCircleParameters(selectedNodes);
-	const mappedCoords = getEquidistantMappedCoords(center, radius, selectedNodes.length);
 
+	const patcher = new NodePatcher(canvas.getData() as any);
+	let mappedCoords;
+	if (compareAndSetSnapshot(selectedNodes)) {
+		const {center} = stateSnapshot;
+		mappedCoords = rotateByHardCodedRadians(center, selectedNodes);
+	} else {
+		const {center, radius} = getCircleParameters(selectedNodes);
+		stateSnapshot.center = center;
+		stateSnapshot.radius = radius;
+		mappedCoords = getEquidistantMappedCoords(center, radius, selectedNodes.length);
+	}
 	selectedNodes.forEach((v, idx) => {
 		const node = patcher.nodeIdMap.get(v.id);
 		if (node && mappedCoords[idx]) {
 			node.x = mappedCoords[idx].x;
 			node.y = mappedCoords[idx].y;
 		}
-	})
+	});
+	stateSnapshot.selectedNodes = selectedNodes;
 
 	void canvas.setData(patcher.getCanvasData());
 }
